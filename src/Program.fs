@@ -7,7 +7,7 @@ let fromBytes (index: int) (count:int) (input : byte[]) = Encoding.UTF8.GetStrin
 let toBytes (input : string) = Encoding.UTF8.GetBytes(input)
 
 let generateEndpoint = async {
-    return IPEndPoint(IPAddress.Loopback, 1337)
+    return IPEndPoint(IPAddress.Parse("0.0.0.0"), 80)
 } 
 
 let startServer = async {
@@ -23,15 +23,13 @@ let server = startServer |> Async.RunSynchronously
 let receive (socket: Socket) = async {
     printfn "Waiting to receive"
     let buffer = Array.create 8192 0uy
-    let! received = socket.ReceiveAsync(buffer, SocketFlags.None) |> Async.AwaitTask
-    let response = buffer |> fromBytes 0 received
-    printfn "Received message: %s" response
-    return response
+    let! recieved = socket.ReceiveAsync(buffer, SocketFlags.None) |> Async.AwaitTask
+    let trunc = buffer |> Array.truncate recieved
+    printfn "Received message: %s" (fromBytes 0 recieved trunc)
+    return buffer |> Array.truncate recieved
 }
 
-let send (socket: Socket) (message: string) = async {
-    printfn "Sending back the message %s" message
-    let buffer = message |> toBytes
+let send (socket: Socket) (buffer: byte[]) = async {
     do! socket.SendAsync(buffer) |> Async.AwaitTask |> Async.Ignore
 }
 
@@ -41,15 +39,16 @@ let echo (socket: Socket) = async {
 }
 
 let run (fn: Socket -> Async<'a>) (token: CancellationToken) (socket: Socket)= async {
-    printfn "Server started listening on port 1337"
+    printfn "Server started listening on port %i" 80
     let childTask (s:Socket) = async {
         do! fn s |> Async.Ignore
     }
     while not token.IsCancellationRequested do 
         printfn "Waiting for client"
         let! handler = socket.AcceptAsync() |> Async.AwaitTask
-        printfn "Connected to client"
-        Async.Start ((childTask handler),token)
+        if handler.Connected then 
+            printfn "Connected to client"
+            Async.Start ((childTask handler),token)
 }
 
 let csource = new CancellationTokenSource()
