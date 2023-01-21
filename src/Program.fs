@@ -22,7 +22,7 @@ let server = startServer |> Async.RunSynchronously
 
 let receive (socket: Socket) = async {
     printfn "Waiting to receive"
-    let buffer = Array.create 1024 0uy
+    let buffer = Array.create 8192 0uy
     let! received = socket.ReceiveAsync(buffer, SocketFlags.None) |> Async.AwaitTask
     let response = buffer |> fromBytes 0 received
     printfn "Received message: %s" response
