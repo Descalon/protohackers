@@ -1,4 +1,4 @@
-module Protohackers.Tests
+module Protohackers
 
 open Expecto
 
